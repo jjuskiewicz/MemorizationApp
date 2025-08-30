@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Memorize Anything — Interactive Text Memory Trainer</title>
+<style>
+  :root{
+    --bg: #ffffff;
+    --surface: #f7f7fb;
+    --text: #121418;
+    --muted: #6a6f76;
+    --border: #e5e7eb;
+    --accent: #4f46e5;   /* indigo-600 */
+    --accent-2:#eef2ff;
+    --success:#16a34a;
+    --danger:#dc2626;
+    --warning:#f59e0b;
+    --shadow: 0 8px 30px rgba(0,0,0,.08);
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b0f14;
+      --surface:#121821;
+      --text:#e8ecf1;
+      --muted:#9aa3ad;
+      --border:#1f2732;
+      --accent:#7c8cff; /* lighter indigo for dark mode */
+      --accent-2:#131a27;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  html.dark {
+    --bg:#0b0f14;
+    --surface:#121821;
+    --text:#e8ecf1;
+    --muted:#9aa3ad;
+    --border:#1f2732;
+    --accent:#7c8cff;
+    --accent-2:#131a27;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    line-height:1.45;
+  }
+  .container{
+    max-width: 1100px;
+    margin: 32px auto 80px;
+    padding: 0 20px;
+  }
+  header{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    margin-bottom: 18px;
+  }
+  .title{
+    display:flex; align-items:center; gap:12px;
+  }
+  .logo{
+    width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#22c55e);
+    box-shadow: var(--shadow);
+  }
+  h1{font-size: clamp(20px, 3vw, 28px); margin:0;}
+  .pill{
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 8px 12px; border:1px solid var(--border); border-radius:999px; background:var(--surface); color:var(--muted);
+  }
+  .toggle{
+    appearance:none; width:40px; height:24px; border-radius:999px; background:var(--border); position:relative; outline:none; cursor:pointer;
+  }
+  .toggle::after{
+    content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:999px; background:#fff; transition: transform .2s ease, background .2s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,.3);
+  }
+  .toggle:checked{ background:var(--accent); }
+  .toggle:checked::after{ transform: translateX(16px); background:#fff; }
+
+  /* Card */
+  .card{
+    background:var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: clip;
+  }
+  .card .head{
+    padding: 16px 18px; border-bottom:1px solid var(--border);
+    display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--accent-2) 70%, transparent), transparent);
+  }
+  .card .body{ padding: 16px; }
+
+  /* Input block */
+  textarea{
+    width:100%; min-height: 160px; resize: vertical; padding:14px; border-radius:10px;
+    border:1px solid var(--border); background:#fff0; color:var(--text);
+    outline: none;
+  }
+  textarea:focus{ border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent); }
+
+  .controls{
+    display:flex; gap:12px; flex-wrap: wrap; align-items:center; margin-top: 12px;
+  }
+  .controls .group{
+    display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background: #0000;
+  }
+  select, input[type="number"], input[type="text"]{
+    padding:8px 10px; border-radius: 8px; border:1px solid var(--border); background:#0000; color:var(--text);
+    outline:none;
+  }
+  select:focus, input[type="number"]:focus, input[type="text"]:focus{
+    border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent);
+  }
+  .btn{
+    appearance:none; border:none; border-radius: 10px; padding:10px 14px; cursor:pointer; font-weight:600;
+    color:#fff; background: var(--accent); box-shadow: var(--shadow);
+  }
+  .btn.secondary{ background: #0f172a; color:#fff; }
+  .btn.ghost{ background: transparent; color:var(--text); border:1px solid var(--border); }
+  .btn:disabled{ opacity:.6; cursor:not-allowed; }
+  .btn + .btn{ margin-left: 8px; }
+
+  /* Tabs & toolbar */
+  .toolbar{
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); padding:8px 12px; background: color-mix(in oklab, var(--surface) 95%, transparent);
+  }
+  .tabs{ display:flex; gap:6px; flex-wrap:wrap; }
+  .tab{
+    border:1px solid var(--border); background:#0000; color:var(--text); padding:8px 12px; border-radius:999px; cursor:pointer; font-weight:600;
+  }
+  .tab.active{ background: var(--accent); color:#fff; border-color: transparent; }
+  .chunk-nav{
+    display:flex; align-items:center; gap:8px;
+  }
+  .chip{ font-size: 12px; color:var(--muted); padding:4px 8px; border:1px solid var(--border); border-radius:999px; background:#0000; }
+  .icon-btn{
+    border:1px solid var(--border); background:#0000; color:var(--text); width:34px; height:34px; border-radius:10px; cursor:pointer;
+  }
+
+  /* Panels */
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+  .panel .section{
+    padding:14px 16px; border:1px dashed var(--border); border-radius: 10px; margin-top: 14px; background: #0000;
+  }
+  .text-display{
+    white-space: pre-wrap; line-height:1.8; font-size: clamp(16px, 2vw, 18px);
+  }
+  .word{
+    padding: 2px 2px;
+    border-radius: 6px;
+    transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+    cursor: pointer;
+  }
+  .word[data-hidden="true"]{
+    background: color-mix(in oklab, var(--accent) 15%, transparent);
+    color: transparent;
+    text-shadow: 0 0 10px rgba(0,0,0,0); /* keep layout */
+    position: relative;
+  }
+  .word[data-hidden="true"]::after{
+    content: attr(data-mask);
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color: color-mix(in oklab, var(--text) 65%, transparent);
+    letter-spacing: .04em;
+  }
+  .word.revealed{ background: color-mix(in oklab, var(--success) 15%, transparent); }
+
+  .inline-input{
+    display:inline-block; vertical-align:baseline;
+  }
+  .inline-input input{
+    font: inherit; color: var(--text); background:#0000;
+    border: 1.5px solid var(--border); border-radius: 8px; padding:2px 6px; margin: 0 2px;
+    width: auto; min-width: 2ch;
+  }
+  .inline-input input.correct{
+    border-color: var(--success); background: color-mix(in oklab, var(--success) 12%, transparent);
+  }
+  .inline-input input.wrong{
+    border-color: var(--danger); background: color-mix(in oklab, var(--danger) 10%, transparent);
+  }
+  .stats{ display:flex; gap:8px; flex-wrap:wrap; color:var(--muted); margin-top:8px; }
+  .progress{
+    height: 8px; background: var(--border); border-radius:999px; overflow:hidden;
+  }
+  .progress > span{
+    display:block; height:100%; width: 0%; background: var(--accent); transition: width .2s ease;
+  }
+  .muted{ color: var(--muted); }
+  .sr-only{ position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .grow{ flex:1; }
+  .right{ margin-left:auto; }
+  .note{ font-size: 13px; color: var(--muted); }
+
+  .kbd{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    border:1px solid var(--border); border-bottom-width: 3px; border-radius:6px; padding:1px 6px; background: color-mix(in oklab, var(--surface) 92%, transparent);
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Memorize Anything</h1>
+          <div class="muted">Paste text → generate interactive memorization games.</div>
+        </div>
+      </div>
+      <label class="pill">
+        <span>Dark mode</span>
+        <input id="darkToggle" class="toggle" type="checkbox" />
+      </label>
+    </header>
+
+    <!-- Input -->
+    <section class="card" id="inputCard">
+      <div class="head">
+        <div class="row">
+          <strong>1) Paste your text</strong>
+          <span class="chip">Local & private — nothing leaves your browser</span>
+        </div>
+        <div class="row">
+          <button id="clearBtn" class="btn ghost" title="Clear input">Clear</button>
+          <button id="startBtn" class="btn" title="Create games">Make Game</button>
+        </div>
+      </div>
+      <div class="body">
+        <textarea id="inputText" placeholder="Paste a sentence, a paragraph, or longer. Then click ‘Make Game’.">To be, or not to be: that is the question.
+
+Whether 'tis nobler in the mind to suffer
+The slings and arrows of outrageous fortune,
+Or to take arms against a sea of troubles
+And by opposing end them.</textarea>
+
+        <div class="controls">
+          <div class="group">
+            <label for="chunkBy">Chunk by</label>
+            <select id="chunkBy">
+              <option value="sentences">Sentences</option>
+              <option value="lines">Lines</option>
+              <option value="whole">Whole text</option>
+            </select>
+          </div>
+          <div class="group">
+            <label for="normalizeSpaces">
+              <input type="checkbox" id="normalizeSpaces" checked />
+              Collapse extra spaces
+            </label>
+          </div>
+          <div class="group">
+            <label for="removeLineBreaks">
+              <input type="checkbox" id="removeLineBreaks" />
+              Remove line breaks
+            </label>
+          </div>
+        </div>
+        <div class="note" style="margin-top:10px">
+          Pro tip: Use <span class="kbd">Tab</span> / <span class="kbd">Shift+Tab</span> to move between controls. Your last text and dark‑mode preference are saved locally.
+        </div>
+      </div>
+    </section>
+
+    <!-- Games -->
+    <section id="gameCard" class="card" style="margin-top:18px; display:none;">
+      <div class="toolbar">
+        <div class="tabs" role="tablist" aria-label="Game modes">
+          <button class="tab active" data-tab="hide" role="tab" aria-selected="true">Hide &amp; Reveal</button>
+          <button class="tab" data-tab="cloze" role="tab" aria-selected="false">Cloze Quiz</button>
+          <button class="tab" data-tab="type" role="tab" aria-selected="false">Type From Memory</button>
+        </div>
+        <div class="chunk-nav">
+          <button id="prevChunk" class="icon-btn" title="Previous chunk" aria-label="Previous">◀</button>
+          <span id="chunkLabel" class="chip">Chunk 1 / 1</span>
+          <button id="nextChunk" class="icon-btn" title="Next chunk" aria-label="Next">▶</button>
+        </div>
+        <div class="row">
+          <button id="speakBtn" class="btn ghost" title="Listen (Web Speech API)">Listen</button>
+          <label class="chip" title="Speech speed">
+            Speed
+            <input id="speechRate" type="number" min="0.5" max="2" step="0.1" value="1.0" style="width:70px;">
+          </label>
+        </div>
+      </div>
+
+      <div class="body">
+        <!-- Hide & Reveal -->
+        <div id="mode-hide" class="panel active" role="tabpanel" aria-labelledby="Hide & Reveal">
+          <div class="row">
+            <label class="chip">
+              Hide
+              <input id="hidePercent" type="range" min="0" max="100" value="40" />
+              <span id="hidePercentLabel">40%</span>
+            </label>
+            <label class="chip">
+              <input type="checkbox" id="firstLetterHint" checked />
+              First-letter hint
+            </label>
+            <button id="reshuffleHide" class="btn ghost">Reshuffle</button>
+            <button id="revealAll" class="btn secondary">Reveal all</button>
+            <button id="hideAll" class="btn ghost">Hide all</button>
+          </div>
+          <div class="section">
+            <div id="hideDisplay" class="text-display" aria-live="polite"></div>
+          </div>
+          <div class="stats">
+            <div>Hidden: <strong id="hiddenCount">0</strong></div>
+            <div class="grow progress"><span id="hideProgress"></span></div>
+          </div>
+        </div>
+
+        <!-- Cloze -->
+        <div id="mode-cloze" class="panel" role="tabpanel" aria-labelledby="Cloze Quiz">
+          <div class="row">
+            <label class="chip">
+              Blanks
+              <input id="clozePercent" type="range" min="0" max="90" value="30" />
+              <span id="clozePercentLabel">30%</span>
+            </label>
+            <button id="reshuffleCloze" class="btn ghost">Reshuffle</button>
+            <button id="checkCloze" class="btn">Check answers</button>
+            <button id="revealCloze" class="btn secondary">Reveal all</button>
+            <button id="hintCloze" class="btn ghost" title="Reveal one helpful letter">Hint letter</button>
+          </div>
+          <div class="section">
+            <div id="clozeDisplay" class="text-display" aria-live="polite"></div>
+          </div>
+          <div class="stats">
+            <div>Correct: <strong id="clozeCorrect">0</strong>/<span id="clozeTotal">0</span></div>
+            <div class="grow progress"><span id="clozeProgress"></span></div>
+          </div>
+        </div>
+
+        <!-- Type From Memory -->
+        <div id="mode-type" class="panel" role="tabpanel" aria-labelledby="Type From Memory">
+          <div class="row">
+            <button id="resetType" class="btn ghost">Reset</button>
+            <button id="hintNextWord" class="btn secondary">Reveal next word</button>
+          </div>
+          <div class="section">
+            <div class="muted" style="margin-bottom:8px;">Target</div>
+            <div id="typeTarget" class="text-display" style="padding:10px; border:1px solid var(--border); border-radius:10px; background: #0000;"></div>
+          </div>
+          <div class="section">
+            <div class="muted" style="margin-bottom:8px;">Your typing</div>
+            <textarea id="typeInput" rows="5" placeholder="Type the text from memory here..." style="width:100%;"></textarea>
+          </div>
+          <div class="stats">
+            <div>Progress: <strong id="typePercent">0%</strong></div>
+            <div>Mistakes: <strong id="typeMistakes">0</strong></div>
+            <div class="grow progress"><span id="typeProgress"></span></div>
+            <div id="typeTimer" class="right chip">⏱ 0.0s</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="note" style="margin-top:14px;">
+      Keyboard: in Cloze, press <span class="kbd">Enter</span> to jump to the next blank. In Type mode, use <span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span> + <span class="kbd">Backspace</span> to clear a word.
+    </p>
+  </div>
+
+<script>
+"use strict";
+
+/* ------------------ Utilities ------------------ */
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+function saveLocal(key, value){ try{ localStorage.setItem(key, JSON.stringify(value)); }catch{} }
+function loadLocal(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch{ return fallback; } }
+
+function normalizeSpaces(text){ return text.replace(/[ \t]+\n/g, '\n').replace(/[ \t]{2,}/g, ' '); }
+function removeLineBreaks(text){ return text.replace(/\r?\n+/g, ' '); }
+
+function normalizeString(s){
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+
+function xmur3(str){
+  let h = 1779033703 ^ str.length;
+  for (let i=0; i<str.length; i++){
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function(){
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return (h ^= h >>> 16) >>> 0;
+  }
+}
+function mulberry32(a){
+  return function(){
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+function makeRng(seedStr){ return mulberry32(xmur3(seedStr)()); }
+
+function lcp(a,b){ let i=0; for(; i<a.length && i<b.length && a[i]===b[i]; i++); return i; }
+
+function tokenize(text){
+  let rx;
+  try{
+    rx = /(\p{L}+(?:['’-]\p{L}+)*)|(\p{N}+)|(\s+)|([^\s\p{L}\p{N}])/gu;
+  }catch(e){
+    rx = /([A-Za-z]+(?:['’-][A-Za-z]+)*)|([0-9]+)|(\s+)|([^\sA-Za-z0-9])/g;
+  }
+  let tokens = [];
+  let m;
+  while((m = rx.exec(text)) !== null){
+    if (m[1] || m[2]) tokens.push({type:'word', text: (m[1]||m[2])});
+    else if (m[3]) tokens.push({type:'space', text: m[3]});
+    else if (m[4]) tokens.push({type:'punct', text: m[4]});
+  }
+  return tokens;
+}
+
+function splitIntoChunks(text, mode='sentences'){
+  if (mode === 'whole') return [text.trim()];
+  if (mode === 'lines'){
+    return text.split(/\r?\n+/).map(s=>s.trim()).filter(Boolean);
+  }
+  // Sentences (prefer Intl.Segmenter if available)
+  if (typeof Intl !== 'undefined' && Intl.Segmenter){
+    try{
+      const seg = new Intl.Segmenter(undefined, { granularity: 'sentence' });
+      const chunks = Array.from(seg.segment(text)).map(s => s.segment.trim()).filter(Boolean);
+      if (chunks.length) return chunks;
+    }catch{}
+  }
+  // Fallback sentence splitter
+  const out = [];
+  let start = 0, i = 0;
+  const isEnd = c => /[.!?。！？…]/.test(c);
+  const isClose = c => /[)"'’”\]]/.test(c);
+  while(i < text.length){
+    if (isEnd(text[i])){
+      while (i+1 < text.length && isEnd(text[i+1])) i++; // e.g., "?!"
+      while (i+1 < text.length && isClose(text[i+1])) i++; // closing quotes
+      const seg = text.slice(start, i+1).trim();
+      if (seg) out.push(seg);
+      // move start to next non-space
+      i += 1;
+      while(i < text.length && /\s/.test(text[i])) i++;
+      start = i;
+    } else {
+      i++;
+    }
+  }
+  const tail = text.slice(start).trim();
+  if (tail) out.push(tail);
+  return out.length ? out : [text.trim()];
+}
+
+function maskWord(w, firstLetterHint){
+  if (!w) return '';
+  if (!firstLetterHint) return '•'.repeat(w.length);
+  const [first, ...rest] = Array.from(w);
+  return first + '•'.repeat(Math.max(0, rest.length));
+}
+
+/* ------------------ State ------------------ */
+const state = {
+  originalText: '',
+  chunkBy: 'sentences',
+  chunks: [],
+  currentChunk: 0,
+
+  hide: {
+    percent: 40,
+    firstLetterHint: true,
+    hidden: new Set(),
+    revealed: new Set(), // user-toggled reveals
+  },
+  cloze: {
+    percent: 30,
+    blanks: new Set(),
+  },
+  type: {
+    startMs: null,
+    mistakes: 0,
+    done: false,
+    lastLen: 0,
+  }
+};
+
+function currentChunkText(){ return state.chunks[state.currentChunk] || ''; }
+function seedKey(suffix){
+  return `chunk:${state.currentChunk}|mode:${suffix}|textHash:${normalizeString(currentChunkText()).length}`;
+}
+
+/* ------------------ Rendering: Hide & Reveal ------------------ */
+function renderHide(){
+  const text = currentChunkText();
+  const tokens = tokenize(text);
+  const words = tokens.map((t,i)=> t.type==='word' ? i : -1).filter(i => i>=0);
+  const wordCount = words.length;
+
+  // Determine which words are hidden via seeded RNG for stability
+  const pct = Number($('#hidePercent').value);
+  const hidDesired = Math.floor(wordCount * pct / 100);
+  const rng = makeRng(seedKey('hide') + '|pct:' + pct);
+  const shuffled = words.slice();
+  for (let i=shuffled.length-1; i>0; i--){
+    const j = Math.floor(rng() * (i+1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  // Rebuild hidden set preserving user reveals when possible
+  const newHidden = new Set(shuffled.slice(0, hidDesired));
+  // Keep previously user-revealed words revealed
+  const revealed = state.hide.revealed;
+
+  const container = $('#hideDisplay');
+  container.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  const firstLetterHint = $('#firstLetterHint').checked;
+
+  let hiddenCount = 0;
+
+  tokens.forEach((tok, idx) => {
+    if (tok.type !== 'word'){
+      // Preserve spaces & punctuation
+      if (tok.type === 'space') frag.appendChild(document.createTextNode(tok.text));
+      else {
+        const span = document.createElement('span'); span.textContent = tok.text;
+        frag.appendChild(span);
+      }
+      return;
+    }
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.dataset.index = idx;
+    span.dataset.text = tok.text;
+
+    // Decide hidden state
+    const shouldHide = newHidden.has(idx) && !revealed.has(idx);
+    span.dataset.hidden = shouldHide ? 'true' : 'false';
+    if (shouldHide){
+      hiddenCount++;
+      span.dataset.mask = maskWord(tok.text, firstLetterHint);
+      span.textContent = tok.text; // masked via ::after; keep layout width
+    }else{
+      span.textContent = tok.text;
+    }
+    if (revealed.has(idx)) span.classList.add('revealed');
+
+    // Click toggles reveal/hide
+    span.addEventListener('click', () => {
+      const currentlyHidden = span.dataset.hidden === 'true';
+      if (currentlyHidden){
+        revealed.add(idx);
+        span.dataset.hidden = 'false';
+        span.classList.add('revealed');
+        span.textContent = tok.text;
+      }else{
+        revealed.delete(idx);
+        // only hide if it's part of the hidden selection
+        if (newHidden.has(idx)){
+          span.dataset.hidden = 'true';
+          span.classList.remove('revealed');
+          span.dataset.mask = maskWord(tok.text, $('#firstLetterHint').checked);
+          span.textContent = tok.text;
+        }
+      }
+      updateHideStats();
+    });
+
+    frag.appendChild(span);
+  });
+
+  container.appendChild(frag);
+  // Update state & stats
+  state.hide.hidden = newHidden;
+  updateHideStats();
+}
+function updateHideStats(){
+  const hiddenNow = $$('#hideDisplay .word[data-hidden="true"]').length;
+  $('#hiddenCount').textContent = hiddenNow;
+  const total = $$('#hideDisplay .word').length;
+  const pct = total ? Math.round(100 * (total - hiddenNow) / total) : 0;
+  $('#hideProgress').style.width = pct + '%';
+}
+
+/* ------------------ Rendering: Cloze ------------------ */
+function renderCloze(){
+  const text = currentChunkText();
+  const tokens = tokenize(text);
+  const wordIndices = tokens.map((t,i)=> t.type==='word' ? i : -1).filter(i=>i>=0);
+  const wordCount = wordIndices.length;
+
+  const pct = Number($('#clozePercent').value);
+  const blanksCount = Math.max(1, Math.floor(wordCount * pct / 100));
+  const rng = makeRng(seedKey('cloze') + '|pct:' + pct);
+  const shuffled = wordIndices.slice();
+  for (let i=shuffled.length-1; i>0; i--){
+    const j = Math.floor(rng() * (i+1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const blanks = new Set(shuffled.slice(0, blanksCount));
+  state.cloze.blanks = blanks;
+
+  const container = $('#clozeDisplay');
+  container.innerHTML = '';
+  const frag = document.createDocumentFragment();
+
+  tokens.forEach((tok, idx) => {
+    if (tok.type !== 'word'){
+      if (tok.type === 'space') frag.appendChild(document.createTextNode(tok.text));
+      else { const s = document.createElement('span'); s.textContent = tok.text; frag.appendChild(s); }
+      return;
+    }
+    if (!blanks.has(idx)){
+      const s = document.createElement('span'); s.textContent = tok.text; s.className = 'word';
+      frag.appendChild(s);
+      return;
+    }
+    const wrapper = document.createElement('span');
+    wrapper.className = 'inline-input';
+    const inp = document.createElement('input');
+    // widen by length (ch units); ensure minimum width
+    const widthCh = Math.max(3, Math.min(24, tok.text.length + 1));
+    inp.style.width = widthCh + 'ch';
+    inp.setAttribute('data-answer', tok.text);
+    inp.setAttribute('aria-label', 'Missing word');
+    inp.autocomplete = 'off';
+    inp.spellcheck = false;
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter'){
+        // move to next blank
+        const inputs = $$('#clozeDisplay input:not(:disabled)');
+        const idx = inputs.indexOf(ev.currentTarget);
+        const next = inputs[idx+1];
+        if (next){ next.focus(); next.select(); }
+        ev.preventDefault();
+      }
+    });
+    inp.addEventListener('input', () => {
+      checkOneClozeInput(inp, false);
+    });
+    wrapper.appendChild(inp);
+    frag.appendChild(wrapper);
+  });
+
+  container.appendChild(frag);
+  updateClozeStats();
+}
+function checkOneClozeInput(inp, finalize){
+  const ans = inp.getAttribute('data-answer') || '';
+  const typed = inp.value || '';
+  const ok = normalizeString(typed) === normalizeString(ans);
+  inp.classList.remove('correct','wrong');
+  if (!typed){
+    // neither
+  } else if (ok){
+    inp.classList.add('correct');
+    if (finalize){
+      inp.value = ans; // keep original casing
+      inp.disabled = true;
+    }
+  } else {
+    inp.classList.add('wrong');
+  }
+  updateClozeStats();
+  return ok;
+}
+function updateClozeStats(){
+  const total = $$('#clozeDisplay input').length;
+  const correct = $$('#clozeDisplay input.correct').length;
+  $('#clozeTotal').textContent = total;
+  $('#clozeCorrect').textContent = correct;
+  const pct = total ? Math.round(100 * correct / total) : 0;
+  $('#clozeProgress').style.width = pct + '%';
+}
+
+/* ------------------ Rendering: Type From Memory ------------------ */
+function renderType(){
+  const text = currentChunkText();
+  $('#typeTarget').textContent = text;
+  $('#typeInput').value = '';
+  state.type.startMs = null;
+  state.type.mistakes = 0;
+  state.type.done = false;
+  state.type.lastLen = 0;
+  updateTypeStats(0, text.length);
+  $('#typeTimer').textContent = '⏱ 0.0s';
+}
+function updateTypeStats(prefixLen, total){
+  const pct = total ? Math.floor(100 * prefixLen / total) : 0;
+  $('#typePercent').textContent = pct + '%';
+  $('#typeProgress').style.width = pct + '%';
+  $('#typeMistakes').textContent = state.type.mistakes;
+}
+
+/* ------------------ Navigation & Tabs ------------------ */
+function setActiveTab(name){
+  $$('.tab').forEach(t => {
+    const active = t.dataset.tab === name;
+    t.classList.toggle('active', active);
+    t.setAttribute('aria-selected', String(active));
+  });
+  $$('.panel').forEach(p => p.classList.remove('active'));
+  $(`#mode-${name}`).classList.add('active');
+
+  // Render each panel fresh on switch (ensures slider effects apply)
+  if (name === 'hide') renderHide();
+  if (name === 'cloze') renderCloze();
+  if (name === 'type') renderType();
+}
+function updateChunkLabel(){
+  $('#chunkLabel').textContent = `Chunk ${state.currentChunk + 1} / ${state.chunks.length}`;
+}
+
+/* ------------------ Event Wiring ------------------ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Restore local state
+  const savedText = loadLocal('mem.text', $('#inputText').value);
+  $('#inputText').value = savedText;
+  const dark = loadLocal('mem.dark', null);
+  if (dark === true) { document.documentElement.classList.add('dark'); $('#darkToggle').checked = true; }
+  if (dark === false) { document.documentElement.classList.remove('dark'); $('#darkToggle').checked = false; }
+
+  // Dark mode toggle
+  $('#darkToggle').addEventListener('change', (e) => {
+    document.documentElement.classList.toggle('dark', e.target.checked);
+    saveLocal('mem.dark', e.target.checked);
+  });
+
+  // Clear / Start
+  $('#clearBtn').addEventListener('click', () => { $('#inputText').value = ''; $('#inputText').focus(); });
+  $('#startBtn').addEventListener('click', () => {
+    let txt = $('#inputText').value || '';
+    if ($('#normalizeSpaces').checked) txt = normalizeSpaces(txt);
+    if ($('#removeLineBreaks').checked) txt = removeLineBreaks(txt);
+    txt = txt.trim();
+    if (!txt){
+      alert('Please paste some text first.');
+      return;
+    }
+    state.originalText = txt;
+    state.chunkBy = $('#chunkBy').value;
+    state.chunks = splitIntoChunks(txt, state.chunkBy);
+    state.currentChunk = 0;
+    saveLocal('mem.text', txt);
+    $('#gameCard').style.display = 'block';
+    updateChunkLabel();
+    setActiveTab('hide');
+    $('#inputCard').scrollIntoView({ behavior:'smooth', block:'start' });
+  });
+
+  // Tabs
+  $$('.tab').forEach(btn => btn.addEventListener('click', () => setActiveTab(btn.dataset.tab)));
+
+  // Chunk nav
+  $('#prevChunk').addEventListener('click', () => {
+    if (state.currentChunk > 0){ state.currentChunk--; resetPerChunk(); updateChunkLabel(); refreshActivePanel(); }
+  });
+  $('#nextChunk').addEventListener('click', () => {
+    if (state.currentChunk < state.chunks.length - 1){ state.currentChunk++; resetPerChunk(); updateChunkLabel(); refreshActivePanel(); }
+  });
+
+  function refreshActivePanel(){
+    const active = $('.panel.active')?.id || 'mode-hide';
+    if (active === 'mode-hide') renderHide();
+    if (active === 'mode-cloze') renderCloze();
+    if (active === 'mode-type') renderType();
+  }
+  function resetPerChunk(){
+    state.hide.revealed = new Set();
+    state.type.startMs = null; state.type.mistakes = 0; state.type.done = false; state.type.lastLen = 0;
+  }
+
+  // Hide controls
+  $('#hidePercent').addEventListener('input', () => {
+    $('#hidePercentLabel').textContent = $('#hidePercent').value + '%';
+    renderHide();
+  });
+  $('#firstLetterHint').addEventListener('change', renderHide);
+  $('#reshuffleHide').addEventListener('click', renderHide);
+  $('#revealAll').addEventListener('click', () => {
+    state.hide.revealed = new Set(state.hide.hidden);
+    renderHide();
+  });
+  $('#hideAll').addEventListener('click', () => {
+    state.hide.revealed = new Set(); // hide all selected by RNG
+    renderHide();
+  });
+
+  // Cloze controls
+  $('#clozePercent').addEventListener('input', () => {
+    $('#clozePercentLabel').textContent = $('#clozePercent').value + '%';
+    renderCloze();
+  });
+  $('#reshuffleCloze').addEventListener('click', renderCloze);
+  $('#checkCloze').addEventListener('click', () => {
+    $$('#clozeDisplay input').forEach(inp => {
+      if (checkOneClozeInput(inp, true)){ /* already disabled */ }
+    });
+    updateClozeStats();
+  });
+  $('#revealCloze').addEventListener('click', () => {
+    $$('#clozeDisplay input').forEach(inp => {
+      const ans = inp.getAttribute('data-answer') || '';
+      inp.value = ans; inp.classList.add('correct'); inp.classList.remove('wrong'); inp.disabled = true;
+    });
+    updateClozeStats();
+  });
+  $('#hintCloze').addEventListener('click', () => {
+    // reveal one useful next letter in a random incorrect/empty blank
+    const remain = $$('#clozeDisplay input:not(:disabled)').filter(inp => normalizeString(inp.value) !== normalizeString(inp.getAttribute('data-answer')||''));
+    if (!remain.length) return;
+    const choice = remain[Math.floor(Math.random()*remain.length)];
+    const ans = choice.getAttribute('data-answer') || '';
+    const typed = choice.value || '';
+    const k = lcp(normalizeString(typed), normalizeString(ans));
+    choice.value = ans.slice(0, Math.min(k+1, ans.length));
+    checkOneClozeInput(choice, false);
+    choice.focus(); choice.setSelectionRange(choice.value.length, choice.value.length);
+  });
+
+  // Type mode
+  const typeInput = $('#typeInput');
+  typeInput.addEventListener('input', () => {
+    const target = currentChunkText();
+    const typed = typeInput.value;
+    if (state.type.startMs === null && typed.length > 0){ state.type.startMs = performance.now(); }
+    const common = lcp(typed, target);
+
+    // Mistake counting heuristic: when user types a new char that creates a mismatch at the frontier
+    if (typed.length > state.type.lastLen){
+      const i = common;
+      if (typed.length > i && target[i] !== undefined && typed[i] !== target[i]) state.type.mistakes++;
+    }
+    state.type.lastLen = typed.length;
+
+    updateTypeStats(common, target.length);
+
+    if (!state.type.done && typed === target){
+      state.type.done = true;
+      const elapsed = (performance.now() - (state.type.startMs || performance.now())) / 1000;
+      $('#typeTimer').textContent = `⏱ ${elapsed.toFixed(1)}s`;
+      typeInput.blur();
+    } else if (state.type.startMs !== null){
+      const elapsed = (performance.now() - state.type.startMs) / 1000;
+      $('#typeTimer').textContent = `⏱ ${elapsed.toFixed(1)}s`;
+    }
+  });
+  $('#resetType').addEventListener('click', renderType);
+  $('#hintNextWord').addEventListener('click', () => {
+    const target = currentChunkText();
+    const typed = $('#typeInput').value;
+    const i = lcp(typed, target);
+    if (i >= target.length) return;
+    // advance to the end of current word + following space(s)
+    let j = i;
+    while (j < target.length && target[j] !== ' ') j++;
+    while (j < target.length && target[j] === ' ') j++;
+    $('#typeInput').value = target.slice(0, j);
+    $('#typeInput').dispatchEvent(new Event('input'));
+    $('#typeInput').focus();
+  });
+
+  // Speech
+  $('#speakBtn').addEventListener('click', () => {
+    const text = currentChunkText();
+    if (!('speechSynthesis' in window)) { alert('Speech synthesis not supported in this browser.'); return; }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const rate = parseFloat($('#speechRate').value || '1.0');
+    u.rate = Math.min(2, Math.max(.5, rate));
+    speechSynthesis.speak(u);
+  });
+});
+
+/* ------------------ Helper for initial demo render if user clicks tabs first ------------------ */
+function ensureGameVisible(){
+  if ($('#gameCard').style.display !== 'block') return;
+  const active = $('.tab.active')?.dataset.tab || 'hide';
+  setActiveTab(active);
+}
+</script>
+</body>
+</html>
